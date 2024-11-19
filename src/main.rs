@@ -69,7 +69,11 @@ fn in_dirs_f(
                     output_path.to_str().unwrap(),
                     encry,
                 )?;
-                println!("Encrypted: {:?}", path);
+                if encry {
+                    println!("Decrypted: {:?}", path);
+                } else {
+                    println!("Encrypted: {:?}", path);
+                }
             }
         }
     }
@@ -113,7 +117,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .expect("Failed to read line");
 
                 if input.trim().is_empty() {
-                    println!("Input is empty. Please try again.");
                     break;
                 }
 
