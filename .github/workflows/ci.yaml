@@ -4,9 +4,9 @@ name: CI
 on:
   # 当 `push` 或 `pull request` 事件发生时就触发工作流的执行，这里仅仅针对 `main` 分支
   push:
-    branches: [main]
+    branches: [release]
   pull_request:
-    branches: [main]
+    branches: [release]
 
   # 允许用于在 `Actions` 标签页中手动运行工作流
   workflow_dispatch:

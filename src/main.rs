@@ -3,9 +3,15 @@
 use openssl::error::ErrorStack;
 use openssl::symm::{Cipher, Crypter, Mode};
 use std::error::Error;
+use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::{env, fs};
+
+enum Choose {
+    TEXT,
+    FileEncrypt,
+    FileDecrypt,
+}
 
 fn cfb_mode(key: &[u8], iv: &[u8], data: &[u8], mode: Mode) -> Result<Vec<u8>, ErrorStack> {
     let cipher = Cipher::aes_128_cfb128();
@@ -71,14 +77,55 @@ fn in_dirs_f(
     Ok(())
 }
 
+fn prompt(prompt_text: &str) -> Choose {
+    println!("{}", prompt_text);
+    loop {
+        let mut input = String::new();
+        std::io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read line");
+
+        match input.trim().to_lowercase().chars().next() {
+            Some('t') => return Choose::TEXT,
+            Some('e') => return Choose::FileEncrypt,
+            Some('d') => return Choose::FileDecrypt,
+            _ => println!("Invalid input. Please try again."),
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let key = b"Im YinMo19's key";
     let iv = b"Haha...A nice iv";
 
     let dir = "./"; // 当前目录
-    let is_decry = env::var("decry").expect("No env set yet.");
 
-    in_dirs_f(dir, key, iv, "encry", "decry", is_decry == "true")?;
+    loop {
+        let choosen =
+            prompt("Please choose a choice:\ninput T for text, E for encrypt, D for decrypt");
 
-    Ok(())
+        match choosen {
+            Choose::TEXT => loop {
+                println!("Please input the text:");
+                let mut input = String::new();
+                std::io::stdin()
+                    .read_line(&mut input)
+                    .expect("Failed to read line");
+
+                if input.trim().is_empty() {
+                    println!("Input is empty. Please try again.");
+                    break;
+                }
+
+                let data = cfb_mode(key, iv, input.as_bytes(), Mode::Encrypt)?;
+                println!("Encrypted: {:?}", data);
+            },
+            Choose::FileEncrypt => {
+                in_dirs_f(dir, key, iv, "decry", "encry", false)?;
+            }
+            Choose::FileDecrypt => {
+                in_dirs_f(dir, key, iv, "encry", "decry", true)?;
+            }
+        }
+    }
 }
