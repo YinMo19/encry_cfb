@@ -1,0 +1,77 @@
+# 下面是一个基础的工作流，你可以基于它来编写自己的 GitHub Actions
+name: CI
+
+# 控制工作流何时运行
+on:
+  # 当 `push` 或 `pull request` 事件发生时就触发工作流的执行，这里仅仅针对 `main` 分支
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+  # 允许用于在 `Actions` 标签页中手动运行工作流
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        build: [linux, macos, windows]
+        include:
+          - build: linux
+            os: ubuntu-18.04
+            rust: nightly
+            target: x86_64-unknown-linux-musl
+            archive-name: cfb_encry-linux.tar.gz
+          - build: macos
+            os: macos-latest
+            rust: nightly
+            target: x86_64-apple-darwin
+            archive-name: cfb_encry-macos.tar.gz
+          - build: windows
+            os: windows-2019
+            rust: nightly-x86_64-msvc
+            target: x86_64-pc-windows-msvc
+            archive-name: cfb_encry-windows.7z
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          profile: minimal
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Build binary
+        run: cargo build --verbose --release --target ${{ matrix.target }}
+        env:
+          RUST_BACKTRACE: 1
+
+      - name: Strip binary (linux and macos)
+        if: matrix.build == 'linux' || matrix.build == 'macos'
+        run: strip "target/${{ matrix.target }}/release/cfb_encry"
+
+      - name: Build archive
+        shell: bash
+        run: |
+          mkdir archive
+          cd archive
+          if [ "${{ matrix.build }}" = "windows" ]; then
+            cp "../target/${{ matrix.target }}/release/cfb_encry.exe" ./
+            7z a "${{ matrix.archive-name }}" LICENSE README.md cfb_encry.exe
+          else
+            cp "../target/${{ matrix.target }}/release/cfb_encry" ./
+            tar -czf "${{ matrix.archive-name }}" LICENSE README.md cfb_encry
+          fi
+      - name: Upload archive
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.archive-name }}
+          path: archive/${{ matrix.archive-name }}
